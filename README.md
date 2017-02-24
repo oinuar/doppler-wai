@@ -35,4 +35,4 @@ You can then build the main project.
 cabal build
 ```
 
-This will build the library.
+This will build the library and all samples. You can find samples inside `dist/build`.
