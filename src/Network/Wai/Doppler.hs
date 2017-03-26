@@ -1,71 +1,68 @@
 module Network.Wai.Doppler (
-   responseHTML
+   responseHtml
 ) where
 
-import Doppler.HTML.Types
 import Network.Wai
+import Doppler.Html.Types
+import qualified Doppler.Css.Types as Css
 import Network.HTTP.Types
 import Data.Binary.Builder
-import Data.Char                   (toLower)
-import qualified Doppler.CSS.Types as CSS
+import Data.Char                      (toLower)
 
-responseHTML :: Status -> ResponseHeaders -> Expression -> Response
-responseHTML status headers =
+responseHtml :: Status -> ResponseHeaders -> Html -> Response
+responseHtml status headers =
      responseBuilder status headers
    . (putStringUtf8 "<!DOCTYPE html>" `append`)
-   . toHTMLBuilder
+   . toHtmlBuilder
 
-toHTMLBuilder :: Expression -> Builder
-toHTMLBuilder (Element name attrs childs) =
+toHtmlBuilder :: Html -> Builder
+toHtmlBuilder (FullTag name attributes children) =
    let lowerCaseName = map toLower name
    in          putCharUtf8 '<'
       `append` putStringUtf8 lowerCaseName
-      `append` foldr (appendWithSpace . toAttributeBuilder) empty attrs
+      `append` foldr (appendWithSpace . toAttributeBuilder) empty attributes
       `append` putCharUtf8 '>'
-      `append` foldr (append . toHTMLBuilder) empty childs
+      `append` foldr (append . toHtmlBuilder) empty children
       `append` putStringUtf8 "</"
       `append` putStringUtf8 lowerCaseName
       `append` putCharUtf8 '>'
 
-toHTMLBuilder (Text content) =
+toHtmlBuilder (Content (Plain content)) =
    putStringUtf8 content
 
-toHTMLBuilder _ =
+toHtmlBuilder _ =
    empty
 
-toAttributeBuilder :: Attribute -> Builder
-toAttributeBuilder (Attribute (key, collection)) =
+toAttributeBuilder :: HtmlAttribute -> Builder
+toAttributeBuilder (key, values) =
             putStringUtf8 key
    `append` putCharUtf8 '='
    `append` putCharUtf8 '"'
-   `append` toCollectionBuilder collection
+   `append` toAttributeValueBuilder values
    `append` putCharUtf8 '"'
 
-toCollectionBuilder :: Collection -> Builder
-toCollectionBuilder (Values values) =
-   foldr (append . toValueBuilder) empty values
+toAttributeValueBuilder :: [HtmlAttributeValue] -> Builder
+toAttributeValueBuilder =
+   foldr (append . toValueBuilder) empty
 
-toCollectionBuilder _ =
-   empty
-
-toValueBuilder :: Value -> Builder
-toValueBuilder (StringValue content) =
+toValueBuilder :: HtmlAttributeValue -> Builder
+toValueBuilder (Value content) =
    putStringUtf8 content
 
-toValueBuilder (CSSValue (CSS.Property (name, values))) =
+toValueBuilder (StyleValue (name, values)) =
             putStringUtf8 name
    `append` putCharUtf8 ':'
-   `append` foldr (append . toCSSBuilder) empty values
+   `append` foldr (append . toCssValueBuilder) empty values
    `append` putCharUtf8 ';'
 
 toValueBuilder _ =
    empty
 
-toCSSBuilder :: CSS.Value -> Builder
-toCSSBuilder (CSS.StringValue content) =
+toCssValueBuilder :: Css.CssPropertyValue -> Builder
+toCssValueBuilder (Css.Value content) =
    putStringUtf8 content
 
-toCSSBuilder _ =
+toCssValueBuilder _ =
    empty
 
 appendWithSpace :: Builder -> Builder -> Builder

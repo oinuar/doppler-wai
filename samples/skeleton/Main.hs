@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
 
-import Doppler.HTML.Syntax
+import Doppler.Html.Syntax
 import Network.Wai.Doppler
 import Network.Wai
 import Network.HTTP.Types
@@ -17,7 +17,7 @@ app request respond =
       path -> notFound path
 
 rootPage :: Response
-rootPage = responseHTML
+rootPage = responseHtml
    status200
    [("Content-Type", "text/html")]
    [html|
@@ -34,7 +34,7 @@ rootPage = responseHTML
    |]
 
 notFound :: ByteString -> Response
-notFound path = responseHTML
+notFound path = responseHtml
    status404
    [("Content-Type", "text/html")]
    [html|
@@ -46,7 +46,7 @@ notFound path = responseHTML
          <body>
             <h1>Not found</h1>
 
-            <p>Sorry but resource ${path} does not exist.</p>
+            <p>Sorry, but resource ${path} does not exist.</p>
          </body>
       </html>
    |]
