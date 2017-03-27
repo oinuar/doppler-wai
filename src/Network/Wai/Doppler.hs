@@ -17,15 +17,26 @@ responseHtml status headers =
 
 toHtmlBuilder :: Html -> Builder
 toHtmlBuilder (FullTag name attributes children) =
-   let lowerCaseName = map toLower name
-   in          putCharUtf8 '<'
-      `append` putStringUtf8 lowerCaseName
-      `append` foldr (appendWithSpace . toAttributeBuilder) empty attributes
-      `append` putCharUtf8 '>'
-      `append` foldr (append . toHtmlBuilder) empty children
-      `append` putStringUtf8 "</"
-      `append` putStringUtf8 lowerCaseName
-      `append` putCharUtf8 '>'
+            putCharUtf8 '<'
+   `append` putStringUtf8 name
+   `append` foldr (appendWithSpace . toAttributeBuilder) empty attributes
+   `append` putCharUtf8 '>'
+   `append` foldr (append . toHtmlBuilder) empty children
+   `append` putStringUtf8 "</"
+   `append` putStringUtf8 name
+   `append` putCharUtf8 '>'
+
+toHtmlBuilder (ShortTag name attributes) =
+            putCharUtf8 '<'
+   `append` putStringUtf8 name
+   `append` foldr (appendWithSpace . toAttributeBuilder) empty attributes
+   `append` putStringUtf8 " />"
+
+toHtmlBuilder (DanglingTag name attributes) =
+            putCharUtf8 '<'
+   `append` putStringUtf8 name
+   `append` foldr (appendWithSpace . toAttributeBuilder) empty attributes
+   `append` putCharUtf8 '>'
 
 toHtmlBuilder (Content (Plain content)) =
    putStringUtf8 content
