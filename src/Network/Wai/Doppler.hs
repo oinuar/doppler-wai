@@ -38,6 +38,9 @@ toHtmlBuilder (DanglingTag name attributes) =
    `append` foldr (appendWithSpace . toAttributeBuilder) empty attributes
    `append` putCharUtf8 '>'
 
+toHtmlBuilder (Content (Style definitions)) =
+   foldr (append . toCssBuilder) empty definitions
+
 toHtmlBuilder (Content (Plain content)) =
    putStringUtf8 content
 
@@ -60,14 +63,37 @@ toValueBuilder :: HtmlAttributeValue -> Builder
 toValueBuilder (Value content) =
    putStringUtf8 content
 
-toValueBuilder (StyleValue (name, values)) =
+toValueBuilder (StyleValue definition) =
+   toCssPropertyBuilder definition
+
+toValueBuilder _ =
+   empty
+
+toCssBuilder :: Css.Css -> Builder
+toCssBuilder (Css.Block selectors properties) =
+            foldr (append . putStringUtf8) empty selectors
+   `append` putCharUtf8 '{'
+   `append` foldr (append . toCssPropertyBuilder) empty properties
+   `append` putCharUtf8 '}'
+
+toCssBuilder (Css.Import url) =
+            putStringUtf8 "@import '"
+   `append` putStringUtf8 url
+   `append` putStringUtf8 "';"
+
+toCssBuilder (Css.MediaBlock selectors definitions) =
+            putStringUtf8 "@media "
+   `append` foldr (append . putStringUtf8) empty selectors
+   `append` putCharUtf8 '{'
+   `append` foldr (append . toCssBuilder) empty definitions
+   `append` putCharUtf8 '}'
+
+toCssPropertyBuilder :: Css.CssProperty -> Builder
+toCssPropertyBuilder (name, values) =
             putStringUtf8 name
    `append` putCharUtf8 ':'
    `append` foldr (append . toCssValueBuilder) empty values
    `append` putCharUtf8 ';'
-
-toValueBuilder _ =
-   empty
 
 toCssValueBuilder :: Css.CssPropertyValue -> Builder
 toCssValueBuilder (Css.Value content) =
