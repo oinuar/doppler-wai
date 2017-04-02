@@ -1,5 +1,5 @@
 module Network.Wai.Doppler (
-   responseHtml
+   responseHtml, responseCss
 ) where
 
 import Network.Wai
@@ -7,13 +7,17 @@ import Doppler.Html.Types
 import qualified Doppler.Css.Types as Css
 import Network.HTTP.Types
 import Data.Binary.Builder
-import Data.Char                      (toLower)
 
 responseHtml :: Status -> ResponseHeaders -> Html -> Response
 responseHtml status headers =
      responseBuilder status headers
    . (putStringUtf8 "<!DOCTYPE html>" `append`)
    . toHtmlBuilder
+
+responseCss :: Status -> ResponseHeaders -> [Css.Css] -> Response
+responseCss status headers =
+     responseBuilder status headers
+   . foldr (append . toCssBuilder) empty
 
 toHtmlBuilder :: Html -> Builder
 toHtmlBuilder (FullTag name attributes children) =
