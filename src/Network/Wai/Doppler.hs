@@ -1,5 +1,5 @@
 module Network.Wai.Doppler (
-   responseHtml, responseCss
+   responseHtml, responseCss, responseXml
 ) where
 
 import Network.Wai
@@ -19,13 +19,20 @@ responseCss status headers =
      responseBuilder status headers
    . foldr (append . toCssBuilder) empty
 
+-- TODO: change Html to Xml when parser and types are ready.
+responseXml :: Status -> ResponseHeaders -> Html -> Response
+responseXml status headers =
+     responseBuilder status headers
+   . (putStringUtf8 "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" `append`)
+   . toHtmlBuilder
+
 toHtmlBuilder :: Html -> Builder
 toHtmlBuilder (FullTag name attributes children) =
             putCharUtf8 '<'
    `append` putStringUtf8 name
    `append` foldr (appendWithSpace . toAttributeBuilder) empty attributes
    `append` putCharUtf8 '>'
-   `append` foldr (append . toHtmlBuilder) empty children
+   `append` toHtmlChildrenBuilder children
    `append` putStringUtf8 "</"
    `append` putStringUtf8 name
    `append` putCharUtf8 '>'
@@ -48,7 +55,52 @@ toHtmlBuilder (Content (Style definitions)) =
 toHtmlBuilder (Content (Plain content)) =
    putStringUtf8 content
 
+toHtmlBuilder (Content BreakingSpace) =
+   putCharUtf8 ' '
+
 toHtmlBuilder _ =
+   empty
+
+toHtmlChildrenBuilder :: [Html] -> Builder
+toHtmlChildrenBuilder (a@(Content _) : b@(Content BreakingSpace) : c@(Content _) : xs) =
+            toHtmlBuilder a
+   `append` toHtmlBuilder b
+   `append` toHtmlBuilder c
+   `append` toHtmlChildrenBuilder xs
+
+toHtmlChildrenBuilder (a:Content BreakingSpace:b:xs) =
+   toHtmlChildrenBuilder (a:b:xs)
+
+toHtmlChildrenBuilder (a@(Content BreakingSpace) : b@(Content _) : xs) =
+            toHtmlBuilder a
+   `append` toHtmlBuilder b
+   `append` toHtmlChildrenBuilder xs
+
+toHtmlChildrenBuilder (a@(Content _) : b@(Content BreakingSpace) : xs) =
+            toHtmlBuilder a
+   `append` toHtmlBuilder b
+   `append` toHtmlChildrenBuilder xs
+
+toHtmlChildrenBuilder (Content BreakingSpace : b : xs) =
+            toHtmlBuilder b
+   `append` toHtmlChildrenBuilder xs
+
+toHtmlChildrenBuilder (a : Content BreakingSpace : xs) =
+            toHtmlBuilder a
+   `append` toHtmlChildrenBuilder xs
+
+toHtmlChildrenBuilder (a:b:xs) =
+            toHtmlBuilder a
+   `append` toHtmlBuilder b
+   `append` toHtmlChildrenBuilder xs
+
+toHtmlChildrenBuilder [Content BreakingSpace] =
+   empty
+
+toHtmlChildrenBuilder [a] =
+   toHtmlBuilder a
+
+toHtmlChildrenBuilder [] =
    empty
 
 toAttributeBuilder :: HtmlAttribute -> Builder
