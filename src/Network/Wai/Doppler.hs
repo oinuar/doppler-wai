@@ -27,80 +27,87 @@ responseXml status headers =
    . toHtmlBuilder
 
 toHtmlBuilder :: Html -> Builder
-toHtmlBuilder (FullTag name attributes children) =
+toHtmlBuilder (Html tag) =
+   toHtmlTagBuilder tag
+
+toHtmlBuilder (HtmlSiblings tags) =
+   foldr (append . toHtmlBuilder) empty tags
+
+toHtmlTagBuilder :: Tag HtmlAttribute HtmlContent -> Builder
+toHtmlTagBuilder (FullTag name attributes children) =
             putCharUtf8 '<'
    `append` putStringUtf8 name
    `append` foldr (appendWithSpace . toAttributeBuilder) empty attributes
    `append` putCharUtf8 '>'
-   `append` toHtmlChildrenBuilder children
+   `append` toHtmlChildrenTagBuilder children
    `append` putStringUtf8 "</"
    `append` putStringUtf8 name
    `append` putCharUtf8 '>'
 
-toHtmlBuilder (ShortTag name attributes) =
+toHtmlTagBuilder (ShortTag name attributes) =
             putCharUtf8 '<'
    `append` putStringUtf8 name
    `append` foldr (appendWithSpace . toAttributeBuilder) empty attributes
    `append` putStringUtf8 " />"
 
-toHtmlBuilder (DanglingTag name attributes) =
+toHtmlTagBuilder (DanglingTag name attributes) =
             putCharUtf8 '<'
    `append` putStringUtf8 name
    `append` foldr (appendWithSpace . toAttributeBuilder) empty attributes
    `append` putCharUtf8 '>'
 
-toHtmlBuilder (Content (Style definitions)) =
+toHtmlTagBuilder (Content (Style definitions)) =
    foldr (append . toCssBuilder) empty definitions
 
-toHtmlBuilder (Content (Plain content)) =
+toHtmlTagBuilder (Content (Plain content)) =
    putStringUtf8 content
 
-toHtmlBuilder (Content BreakingSpace) =
+toHtmlTagBuilder (Content BreakingSpace) =
    putCharUtf8 ' '
 
-toHtmlBuilder _ =
+toHtmlTagBuilder _ =
    empty
 
-toHtmlChildrenBuilder :: [Html] -> Builder
-toHtmlChildrenBuilder (a@(Content _) : b@(Content BreakingSpace) : c@(Content _) : xs) =
-            toHtmlBuilder a
-   `append` toHtmlBuilder b
-   `append` toHtmlBuilder c
-   `append` toHtmlChildrenBuilder xs
+toHtmlChildrenTagBuilder :: [Tag HtmlAttribute HtmlContent] -> Builder
+toHtmlChildrenTagBuilder (a@(Content _) : b@(Content BreakingSpace) : c@(Content _) : xs) =
+            toHtmlTagBuilder a
+   `append` toHtmlTagBuilder b
+   `append` toHtmlTagBuilder c
+   `append` toHtmlChildrenTagBuilder xs
 
-toHtmlChildrenBuilder (a:Content BreakingSpace:b:xs) =
-   toHtmlChildrenBuilder (a:b:xs)
+toHtmlChildrenTagBuilder (a:Content BreakingSpace:b:xs) =
+   toHtmlChildrenTagBuilder (a:b:xs)
 
-toHtmlChildrenBuilder (a@(Content BreakingSpace) : b@(Content _) : xs) =
-            toHtmlBuilder a
-   `append` toHtmlBuilder b
-   `append` toHtmlChildrenBuilder xs
+toHtmlChildrenTagBuilder (a@(Content BreakingSpace) : b@(Content _) : xs) =
+            toHtmlTagBuilder a
+   `append` toHtmlTagBuilder b
+   `append` toHtmlChildrenTagBuilder xs
 
-toHtmlChildrenBuilder (a@(Content _) : b@(Content BreakingSpace) : xs) =
-            toHtmlBuilder a
-   `append` toHtmlBuilder b
-   `append` toHtmlChildrenBuilder xs
+toHtmlChildrenTagBuilder (a@(Content _) : b@(Content BreakingSpace) : xs) =
+            toHtmlTagBuilder a
+   `append` toHtmlTagBuilder b
+   `append` toHtmlChildrenTagBuilder xs
 
-toHtmlChildrenBuilder (Content BreakingSpace : b : xs) =
-            toHtmlBuilder b
-   `append` toHtmlChildrenBuilder xs
+toHtmlChildrenTagBuilder (Content BreakingSpace : b : xs) =
+            toHtmlTagBuilder b
+   `append` toHtmlChildrenTagBuilder xs
 
-toHtmlChildrenBuilder (a : Content BreakingSpace : xs) =
-            toHtmlBuilder a
-   `append` toHtmlChildrenBuilder xs
+toHtmlChildrenTagBuilder (a : Content BreakingSpace : xs) =
+            toHtmlTagBuilder a
+   `append` toHtmlChildrenTagBuilder xs
 
-toHtmlChildrenBuilder (a:b:xs) =
-            toHtmlBuilder a
-   `append` toHtmlBuilder b
-   `append` toHtmlChildrenBuilder xs
+toHtmlChildrenTagBuilder (a:b:xs) =
+            toHtmlTagBuilder a
+   `append` toHtmlTagBuilder b
+   `append` toHtmlChildrenTagBuilder xs
 
-toHtmlChildrenBuilder [Content BreakingSpace] =
+toHtmlChildrenTagBuilder [Content BreakingSpace] =
    empty
 
-toHtmlChildrenBuilder [a] =
-   toHtmlBuilder a
+toHtmlChildrenTagBuilder [a] =
+   toHtmlTagBuilder a
 
-toHtmlChildrenBuilder [] =
+toHtmlChildrenTagBuilder [] =
    empty
 
 toAttributeBuilder :: HtmlAttribute -> Builder
@@ -145,7 +152,7 @@ toCssBuilder (Css.MediaBlock selectors definitions) =
    `append` putCharUtf8 '}'
 
 toCssPropertyBuilder :: Css.CssProperty -> Builder
-toCssPropertyBuilder (name, values) =
+toCssPropertyBuilder (Css.CssProperty (name, values)) =
             putStringUtf8 name
    `append` putCharUtf8 ':'
    `append` foldr (append . toCssValueBuilder) empty values
