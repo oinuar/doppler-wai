@@ -111,12 +111,15 @@ toHtmlChildrenTagBuilder [] =
    empty
 
 toAttributeBuilder :: HtmlAttribute -> Builder
-toAttributeBuilder (key, values) =
+toAttributeBuilder (key, AttributeValues values) =
             putStringUtf8 key
    `append` putCharUtf8 '='
    `append` putCharUtf8 '"'
    `append` toAttributeValueBuilder values
    `append` putCharUtf8 '"'
+
+toAttributeBuilder _ =
+   empty
 
 toAttributeValueBuilder :: [HtmlAttributeValue] -> Builder
 toAttributeValueBuilder =
