@@ -39,7 +39,7 @@ toHtmlTagBuilder (FullTag name attributes children) =
    `append` putStringUtf8 name
    `append` foldr (appendWithSpace . toAttributeBuilder) empty attributes
    `append` putCharUtf8 '>'
-   `append` toHtmlChildrenTagBuilder children
+   `append` foldr (append . toHtmlTagBuilder) empty children
    `append` putStringUtf8 "</"
    `append` putStringUtf8 name
    `append` putCharUtf8 '>'
@@ -66,48 +66,6 @@ toHtmlTagBuilder (Content BreakingSpace) =
    putCharUtf8 ' '
 
 toHtmlTagBuilder _ =
-   empty
-
-toHtmlChildrenTagBuilder :: [Tag HtmlAttribute HtmlContent] -> Builder
-toHtmlChildrenTagBuilder (a@(Content _) : b@(Content BreakingSpace) : c@(Content _) : xs) =
-            toHtmlTagBuilder a
-   `append` toHtmlTagBuilder b
-   `append` toHtmlTagBuilder c
-   `append` toHtmlChildrenTagBuilder xs
-
-toHtmlChildrenTagBuilder (a:Content BreakingSpace:b:xs) =
-   toHtmlChildrenTagBuilder (a:b:xs)
-
-toHtmlChildrenTagBuilder (a@(Content BreakingSpace) : b@(Content _) : xs) =
-            toHtmlTagBuilder a
-   `append` toHtmlTagBuilder b
-   `append` toHtmlChildrenTagBuilder xs
-
-toHtmlChildrenTagBuilder (a@(Content _) : b@(Content BreakingSpace) : xs) =
-            toHtmlTagBuilder a
-   `append` toHtmlTagBuilder b
-   `append` toHtmlChildrenTagBuilder xs
-
-toHtmlChildrenTagBuilder (Content BreakingSpace : b : xs) =
-            toHtmlTagBuilder b
-   `append` toHtmlChildrenTagBuilder xs
-
-toHtmlChildrenTagBuilder (a : Content BreakingSpace : xs) =
-            toHtmlTagBuilder a
-   `append` toHtmlChildrenTagBuilder xs
-
-toHtmlChildrenTagBuilder (a:b:xs) =
-            toHtmlTagBuilder a
-   `append` toHtmlTagBuilder b
-   `append` toHtmlChildrenTagBuilder xs
-
-toHtmlChildrenTagBuilder [Content BreakingSpace] =
-   empty
-
-toHtmlChildrenTagBuilder [a] =
-   toHtmlTagBuilder a
-
-toHtmlChildrenTagBuilder [] =
    empty
 
 toAttributeBuilder :: HtmlAttribute -> Builder
@@ -147,8 +105,10 @@ toCssBuilder (Css.Import url) =
    `append` putStringUtf8 url
    `append` putStringUtf8 "';"
 
-toCssBuilder (Css.MediaBlock selectors definitions) =
-            putStringUtf8 "@media "
+toCssBuilder (Css.SpecialBlock name selectors definitions) =
+            putStringUtf8 "@"
+   `append` putStringUtf8 name
+   `append` putCharUtf8 ' '
    `append` foldr (append . putStringUtf8) empty selectors
    `append` putCharUtf8 '{'
    `append` foldr (append . toCssBuilder) empty definitions
